@@ -49,6 +49,19 @@ resource "aws_iam_role_policy" "example" {
         "ecr:BatchCheckLayerAvailability",
         "ecr:PutImage"
       ]
+    },
+    {
+      "Effect":"Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion",
+        "s3:GetBucketVersioning",
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "${aws_s3_bucket.codepipeline_bucket.arn}",
+        "${aws_s3_bucket.codepipeline_bucket.arn}/*"
+      ]
     }
   ]
 }
@@ -61,7 +74,7 @@ resource "aws_codebuild_project" "back_end" {
   service_role  = "${aws_iam_role.back_end.arn}"
 
   artifacts {
-    type = "NO_ARTIFACTS"
+    type = "CODEPIPELINE"
   }
 
   environment {
@@ -77,29 +90,6 @@ resource "aws_codebuild_project" "back_end" {
   }
 
   source {
-    type            = "GITHUB"
-    location        = "https://github.com/esgi-cloud-project/back_end_app"
-  }
-}
-
-resource "aws_codebuild_source_credential" "back_end" {
-  auth_type = "PERSONAL_ACCESS_TOKEN"
-  server_type = "GITHUB"
-  token = "${var.GITHUB_ACCESS_TOKEN}"
-}
-
-resource "aws_codebuild_webhook" "example" {
-  project_name = "${aws_codebuild_project.back_end.name}"
-
-  filter_group {
-    filter {
-      type = "EVENT"
-      pattern = "PUSH"
-    }
-
-    filter {
-      type = "HEAD_REF"
-      pattern = "master"
-    }
+    type = "CODEPIPELINE"
   }
 }
