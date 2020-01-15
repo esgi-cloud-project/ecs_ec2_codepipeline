@@ -91,7 +91,7 @@ resource "aws_ecs_service" "back_end" {
   load_balancer {
     target_group_arn = aws_alb_target_group.app.id
     container_name   = "esgi_cloud_back_end"
-    container_port   = 8080
+    container_port   = var.app_port
   }
 
   depends_on = [aws_alb_listener.front_end]
