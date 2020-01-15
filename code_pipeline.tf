@@ -1,10 +1,10 @@
-resource "aws_s3_bucket" "codepipeline_bucket" {
-  bucket = "esgi-cloud-codepipeline"
+resource "aws_s3_bucket" "back_end_code_pipeline" {
+  bucket = "esgi-cloud-code-pipeline"
   acl    = "private"
 }
 
-resource "aws_iam_role" "codepipeline_role" {
-  name = "esgi_cloud_codepipeline"
+resource "aws_iam_role" "back_end_code_pipeline" {
+  name = "esgi_cloud_back_end_code_pipeline"
 
   assume_role_policy = <<EOF
 {
@@ -22,9 +22,9 @@ resource "aws_iam_role" "codepipeline_role" {
 EOF
 }
 
-resource "aws_iam_role_policy" "codepipeline_policy" {
-  name = "esgi_cloud_codepipeline_policy"
-  role = "${aws_iam_role.codepipeline_role.id}"
+resource "aws_iam_role_policy" "back_end_code_pipeline" {
+  name = "esgi_cloud_code_pipeline"
+  role = "${aws_iam_role.back_end_code_pipeline.id}"
 
   policy = <<EOF
 {
@@ -39,8 +39,8 @@ resource "aws_iam_role_policy" "codepipeline_policy" {
         "s3:PutObject"
       ],
       "Resource": [
-        "${aws_s3_bucket.codepipeline_bucket.arn}",
-        "${aws_s3_bucket.codepipeline_bucket.arn}/*"
+        "${aws_s3_bucket.back_end_code_pipeline.arn}",
+        "${aws_s3_bucket.back_end_code_pipeline.arn}/*"
       ]
     },
     {
@@ -50,18 +50,26 @@ resource "aws_iam_role_policy" "codepipeline_policy" {
         "codebuild:StartBuild"
       ],
       "Resource": "*"
+    },
+    {
+        "Action": [
+            "ecs:*",
+            "iam:PassRole"
+        ],
+        "Resource": "*",
+        "Effect": "Allow"
     }
   ]
 }
 EOF
 }
 
-resource "aws_codepipeline" "codepipeline" {
-  name     = "esgi_cloud_codepipeline"
-  role_arn = "${aws_iam_role.codepipeline_role.arn}"
+resource "aws_codepipeline" "back_end" {
+  name     = "esgi_cloud"
+  role_arn = "${aws_iam_role.back_end_code_pipeline.arn}"
 
   artifact_store {
-    location = "${aws_s3_bucket.codepipeline_bucket.bucket}"
+    location = "${aws_s3_bucket.back_end_code_pipeline.bucket}"
     type     = "S3"
   }
 
@@ -99,6 +107,25 @@ resource "aws_codepipeline" "codepipeline" {
 
       configuration = {
         ProjectName = "${aws_codebuild_project.back_end.name}"
+      }
+    }
+  }
+
+  stage {
+    name = "Deploy"
+
+    action {
+      name             = "Deploy"
+      category         = "Deploy"
+      owner            = "AWS"
+      provider         = "ECS"
+      input_artifacts  = ["build_output"]
+      version          = "1"
+
+      configuration = {
+        ClusterName = "${aws_ecs_cluster.back_end.name}"
+        ServiceName = "${aws_ecs_service.back_end.name}"
+        FileName    = "imagedefinitions.json"
       }
     }
   }

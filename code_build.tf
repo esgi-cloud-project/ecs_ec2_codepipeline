@@ -1,14 +1,5 @@
-resource "aws_ecr_repository" "back_end" {
-  name                 = "esgi-cloud-project"
-  image_tag_mutability = "MUTABLE"
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-}
-
-resource "aws_iam_role" "back_end" {
-  name = "esgi_cloud_back_end_iam"
+resource "aws_iam_role" "back_end_code_build" {
+  name = "esgi_cloud_back_end_code_build"
 
   assume_role_policy = <<EOF
 {
@@ -26,8 +17,8 @@ resource "aws_iam_role" "back_end" {
 EOF
 }
 
-resource "aws_iam_role_policy" "example" {
-  role = "${aws_iam_role.back_end.name}"
+resource "aws_iam_role_policy" "back_end_code_build" {
+  role = "${aws_iam_role.back_end_code_build.name}"
 
   policy = <<POLICY
 {
@@ -59,8 +50,8 @@ resource "aws_iam_role_policy" "example" {
         "s3:PutObject"
       ],
       "Resource": [
-        "${aws_s3_bucket.codepipeline_bucket.arn}",
-        "${aws_s3_bucket.codepipeline_bucket.arn}/*"
+        "${aws_s3_bucket.back_end_code_pipeline.arn}",
+        "${aws_s3_bucket.back_end_code_pipeline.arn}/*"
       ]
     }
   ]
@@ -68,10 +59,19 @@ resource "aws_iam_role_policy" "example" {
 POLICY
 }
 
-resource "aws_codebuild_project" "back_end" {
-  name           = "back_end_build"
+data "template_file" "back_end_build_spec_code_build" {
+  template = "${file("${path.module}/buildspec.yml")}"
 
-  service_role  = "${aws_iam_role.back_end.arn}"
+  vars = {
+    repository_uri = "${aws_ecr_repository.back_end.repository_url}"
+    ecs_task_definitions = "esgi_cloud_back_end"
+  }
+}
+
+resource "aws_codebuild_project" "back_end" {
+  name           = "esgi_cloud_back_end"
+
+  service_role  = "${aws_iam_role.back_end_code_build.arn}"
 
   artifacts {
     type = "CODEPIPELINE"
@@ -82,14 +82,10 @@ resource "aws_codebuild_project" "back_end" {
     image                       = "aws/codebuild/standard:2.0"
     type                        = "LINUX_CONTAINER"
     privileged_mode = true
-
-    environment_variable {
-      name = "REPOSITORY_URI"
-      value = aws_ecr_repository.back_end.repository_url
-    }
   }
 
   source {
     type = "CODEPIPELINE"
+    buildspec = "${data.template_file.back_end_build_spec_code_build.rendered}"
   }
 }
