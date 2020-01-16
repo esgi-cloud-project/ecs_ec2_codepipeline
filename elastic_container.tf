@@ -65,9 +65,20 @@ resource "aws_iam_role_policy" "back_end_elastic_container" {
 EOF
 }
 
+data "template_file" "back_end_task_definition_ecs" {
+  template = "${file("${path.module}/task_definitions_service.json")}"
+
+  vars = {
+    app_port = var.app_port 
+    image = "${aws_ecr_repository.back_end.repository_url}:latest"
+    event_service_url = var.sqs_id
+    event_service_arn = var.sqs_arn
+  }
+}
+
 resource "aws_ecs_task_definition" "back_end" {
   family                = "esgi_cloud_back_end"
-  container_definitions = "${file("task_definitions_service.json")}"
+  container_definitions = "${data.template_file.back_end_task_definition_ecs.rendered}"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = "1024"
@@ -83,16 +94,16 @@ resource "aws_ecs_service" "back_end" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    security_groups  = [aws_security_group.ecs_tasks.id]
+    security_groups  = [aws_security_group.back_end_ecs.id]
     subnets          = aws_subnet.private.*.id
     assign_public_ip = true
   }
 
   load_balancer {
-    target_group_arn = aws_alb_target_group.app.id
+    target_group_arn = aws_alb_target_group.back_end.id
     container_name   = "esgi_cloud_back_end"
     container_port   = var.app_port
   }
 
-  depends_on = [aws_alb_listener.front_end]
+  depends_on = [aws_alb_listener.back_end]
 }

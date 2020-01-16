@@ -1,14 +1,24 @@
 [
   {
     "name": "esgi_cloud_back_end",
-    "image": "006594473555.dkr.ecr.eu-west-3.amazonaws.com/esgi-cloud-project-back_end:latest",
+    "image": "${image}",
     "cpu": 1024,
     "memory": 2048,
     "essential": true,
     "portMappings": [
       {
-        "containerPort": 3000,
-        "hostPort": 3000
+        "containerPort": ${app_port},
+        "hostPort": ${app_port}
+      }
+    ],
+    "environment": [
+      {
+        "name": "EVENT_SERVICE_URL",
+        "value": "${event_service_url}"
+      },
+      {
+        "name": "EVENT_SERVICE_ARN",
+        "value": "${event_service_arn}"
       }
     ]
   }
