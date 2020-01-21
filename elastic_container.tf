@@ -21,7 +21,9 @@ resource "aws_iam_role" "back_end_elastic_container" {
     {
       "Effect": "Allow",
       "Principal": {
-        "Service": "ecs-tasks.amazonaws.com"
+        "Service": [
+          "ecs-tasks.amazonaws.com"
+        ]
       },
       "Action": "sts:AssumeRole"
     }
@@ -56,9 +58,30 @@ resource "aws_iam_role_policy" "back_end_elastic_container" {
             "ecr:GetAuthorizationToken",
             "ecr:BatchCheckLayerAvailability",
             "ecr:BatchGetImage",
-            "ecr:GetDownloadUrlForLayer"
+            "ecr:GetDownloadUrlForLayer",
+            "logs:CreateLogStream",
+            "logs:PutLogEvents",
+            "logs:CreateLogGroup"
         ],
         "Resource": "*"
+    },
+    {
+        "Effect": "Allow",
+        "Action": [
+            "dynamodb:Scan",
+            "dynamodb:PutItem",
+            "dynamodb:UpdateItem",
+            "dynamodb:GetItem"
+        ],
+        "Resource": "*"
+    },
+    {
+        "Effect": "Allow",
+        "Action": [
+            "sqs:ReceiveMessage",
+            "sqs:DeleteMessage"
+        ],
+        "Resource": "${var.sqs_arn}"
     }
   ]
 }
@@ -84,6 +107,7 @@ resource "aws_ecs_task_definition" "back_end" {
   cpu                      = "1024"
   memory                   = "2048"
   execution_role_arn = "${aws_iam_role.back_end_elastic_container.arn}"
+  task_role_arn = "${aws_iam_role.back_end_elastic_container.arn}"
 }
 
 resource "aws_ecs_service" "back_end" {
@@ -106,4 +130,16 @@ resource "aws_ecs_service" "back_end" {
   }
 
   depends_on = [aws_alb_listener.back_end]
+}
+
+resource "aws_cloudwatch_log_group" "log_group" {
+  name = "/ecs/esgi-cloud-back_end"
+    tags = {
+    Environment = "production"
+  }
+}
+
+resource "aws_cloudwatch_log_stream" "cb_log_stream" {
+  name           = "fargate"
+  log_group_name = aws_cloudwatch_log_group.log_group.name
 }

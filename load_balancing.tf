@@ -49,6 +49,10 @@ resource "aws_alb_target_group" "back_end" {
   protocol    = "HTTP"
   vpc_id      = var.vpc.id
   target_type = "ip"
+  health_check {
+    path = "/api"
+    matcher = "200,404"
+  }
 }
 
 resource "aws_alb_listener" "back_end" {

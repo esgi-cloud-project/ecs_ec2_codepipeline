@@ -11,6 +11,15 @@
         "hostPort": ${app_port}
       }
     ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/esgi-cloud-back_end",
+        "awslogs-region": "eu-west-3",
+        "awslogs-stream-prefix": "fargate",
+        "mode": "non-blocking"
+      }
+    },
     "environment": [
       {
         "name": "EVENT_SERVICE_URL",
