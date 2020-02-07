@@ -2,8 +2,6 @@
   {
     "name": "esgi_cloud_back_end",
     "image": "${image}",
-    "cpu": 1024,
-    "memory": 2048,
     "essential": true,
     "portMappings": [
       {
