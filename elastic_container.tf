@@ -191,20 +191,21 @@ resource "aws_iam_instance_profile" "profile" {
 
 
 resource "aws_instance" "back_end" {
-  ami                    = "${data.aws_ami.latest_ecs.id}"
-  availability_zone = "${data.aws_availability_zones.available.names[0]}"
-  subnet_id = "${aws_subnet.public[0].id}"
+  count = var.az_count
+  ami = "${data.aws_ami.latest_ecs.id}"
+  availability_zone = element(data.aws_availability_zones.available.names, count.index)
+  subnet_id = element(aws_subnet.private.*.id, count.index)
   iam_instance_profile = "${aws_iam_instance_profile.profile.name}"
-  instance_type          = "t2.micro"
-  ebs_optimized          = "false"
-  source_dest_check      = "false"
+  instance_type = "t2.micro"
+  ebs_optimized = "false"
+  source_dest_check = "false"
   associate_public_ip_address = false
   key_name = "test-ecs"
-  security_groups = ["${aws_security_group.back_end_ec2_ssh.id}"]
-  user_data              = "${data.template_file.ec2_ecs_definition.rendered}"
+  vpc_security_group_ids = ["${aws_security_group.back_end_ec2_ssh.id}"]
+  user_data = "${data.template_file.ec2_ecs_definition.rendered}"
   root_block_device {
-    volume_type           = "gp2"
-    volume_size           = "30"
+    volume_type = "gp2"
+    volume_size = "30"
     delete_on_termination = "true"
   }
 
@@ -212,14 +213,9 @@ resource "aws_instance" "back_end" {
     ignore_changes         = ["ami", "user_data", "subnet_id", "key_name", "ebs_optimized", "private_ip"]
   }
 
-  # depends_on = [aws_vpc_endpoint.ecs-agent, aws_vpc_endpoint.ecs-telemetry, aws_vpc_endpoint.ecs]
-  depends_on = [aws_vpc_endpoint.dynamodb]
-}
-
-resource "aws_eip" "back_ec2_elasctic_ip" {
-  instance = "${aws_instance.back_end.id}"
-  vpc      = true
-  depends_on = [var.public_subnet_depends_on]
+  tags = {
+    Name = "esgi_cloud_back_end_instance"
+  }
 }
 
 data "template_file" "back_end_task_definition_ecs" {
@@ -247,12 +243,12 @@ resource "aws_ecs_service" "back_end" {
   name            = "esgi_cloud_back_end"
   cluster         = "${aws_ecs_cluster.back_end.id}"
   task_definition = "${aws_ecs_task_definition.back_end.arn}"
-  desired_count   = 1
+  desired_count   = 2
   launch_type     = "EC2"
 
   network_configuration {
     security_groups  = [aws_security_group.back_end_ecs.id]
-    subnets          = aws_subnet.public.*.id
+    subnets          = aws_subnet.private.*.id
   }
 
   load_balancer {
