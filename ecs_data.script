@@ -1,2 +1,2 @@
 #!/bin/bash
-echo ECS_CLUSTER=esgi_cloud_back_end >> /etc/ecs/ecs.config
+echo ECS_CLUSTER=${cluster_name} >> /etc/ecs/ecs.config

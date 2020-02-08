@@ -1,11 +1,15 @@
-variable "GITHUB_ACCESS_TOKEN" {
-    type= string
-    description = "Git hub acces token"
+variable "code_pipeline_source_conf" {
+    type= object({
+      OAuthToken = string,
+      Owner = string,
+      Repo = string,
+      Branch = string
+    })
+    description = "Code pipeline source object conf please refer to aws documentation for a valid one"
 }
 
 variable "az_count" {
   description = "Number of AZs to cover in a given region"
-  default     = "2"
 }
 
 variable "app_port" {
@@ -15,6 +19,31 @@ variable "app_port" {
 
 variable "vpc" {
   description = "VPC object"
+}
+
+variable "private_subnet" {
+  description = "VPC private subnet"
+}
+
+variable "public_subnet" {
+  description = "VPC public subnet"
+}
+
+variable "availability_zone" {
+  description = "Availability zone"
+}
+
+
+variable "prefix" {
+  description = "Prefix name for all ressources"
+}
+
+variable "buildspec_path" {
+  description = "Path for the build spec"
+}
+
+variable "task_definition_path" {
+  description = "Path for the task definition"
 }
 
 variable "public_subnet_depends_on" {

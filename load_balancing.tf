@@ -1,5 +1,5 @@
 resource "aws_security_group" "back_end_load_balancer" {
-  name        = "esgi_cloud_back_end_load_balancer"
+  name        = "${var.prefix}-load_balancer"
   vpc_id      = var.vpc.id
 
   ingress {
@@ -18,7 +18,7 @@ resource "aws_security_group" "back_end_load_balancer" {
 }
 
 resource "aws_security_group" "back_end_ecs" {
-  name        = "esgi_cloud_back_end_ecs"
+  name        = "${var.prefix}-ecs"
   vpc_id      = var.vpc.id
 
   ingress {
@@ -44,7 +44,7 @@ resource "aws_security_group" "back_end_ecs" {
 }
 
 resource "aws_security_group" "back_end_ec2_ssh" {
-  name        = "esgi_cloud_back_end_ec2_ssh"
+  name        = "${var.prefix}-ec2-ssh"
   vpc_id      = var.vpc.id
 
   ingress {
@@ -91,14 +91,14 @@ resource "aws_security_group" "back_end_ec2_ssh" {
 }
 
 resource "aws_alb" "back_end" {
-  name            = "cb-load-balancer"
-  subnets         = aws_subnet.public.*.id
+  name            = var.prefix
+  subnets         = var.public_subnet.*.id
   security_groups = [aws_security_group.back_end_load_balancer.id]
   depends_on = [var.public_subnet_depends_on]
 }
 
 resource "aws_alb_target_group" "back_end" {
-  name        = "cb-target-group"
+  name        = var.prefix
   port        = var.app_port
   protocol    = "HTTP"
   vpc_id      = var.vpc.id

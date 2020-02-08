@@ -1,10 +1,10 @@
 resource "aws_s3_bucket" "back_end_code_pipeline" {
-  bucket = "esgi-cloud-code-pipeline"
+  bucket = "${var.prefix}-code-pipeline"
   acl    = "private"
 }
 
 resource "aws_iam_role" "back_end_code_pipeline" {
-  name = "esgi_cloud_back_end_code_pipeline"
+  name = "${var.prefix}-code-pipeline"
 
   assume_role_policy = <<EOF
 {
@@ -23,7 +23,7 @@ EOF
 }
 
 resource "aws_iam_role_policy" "back_end_code_pipeline" {
-  name = "esgi_cloud_code_pipeline"
+  name = "${var.prefix}-pipeline"
   role = "${aws_iam_role.back_end_code_pipeline.id}"
 
   policy = <<EOF
@@ -65,7 +65,7 @@ EOF
 }
 
 resource "aws_codepipeline" "back_end" {
-  name     = "esgi_cloud"
+  name     = var.prefix
   role_arn = "${aws_iam_role.back_end_code_pipeline.arn}"
 
   artifact_store {
@@ -84,12 +84,7 @@ resource "aws_codepipeline" "back_end" {
       version          = "1"
       output_artifacts = ["source_output"]
 
-      configuration = {
-        OAuthToken = "${var.GITHUB_ACCESS_TOKEN}"
-        Owner  = "esgi-cloud-project"
-        Repo   = "back_end_app"
-        Branch = "master"
-      }
+      configuration = var.code_pipeline_source_conf
     }
   }
 

@@ -1,5 +1,5 @@
 resource "aws_iam_role" "back_end_code_build" {
-  name = "esgi_cloud_back_end_code_build"
+  name = "${var.prefix}_code_build"
 
   assume_role_policy = <<EOF
 {
@@ -60,16 +60,16 @@ POLICY
 }
 
 data "template_file" "back_end_build_spec_code_build" {
-  template = "${file("${path.module}/buildspec.yml")}"
+  template = file(var.buildspec_path)
 
   vars = {
     repository_uri = "${aws_ecr_repository.back_end.repository_url}"
-    ecs_task_definitions = "esgi_cloud_back_end"
+    ecs_task_definitions = var.prefix
   }
 }
 
 resource "aws_codebuild_project" "back_end" {
-  name           = "esgi_cloud_back_end"
+  name           = "${var.prefix}"
 
   service_role  = "${aws_iam_role.back_end_code_build.arn}"
 

@@ -1,5 +1,5 @@
 resource "aws_ecr_repository" "back_end" {
-  name                 = "esgi-cloud-project-back_end"
+  name                 = var.prefix
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -8,11 +8,11 @@ resource "aws_ecr_repository" "back_end" {
 }
 
 resource "aws_ecs_cluster" "back_end" {
-  name = "esgi_cloud_back_end"
+  name = var.prefix
 }
 
 resource "aws_iam_role" "back_end_elastic_container" {
-  name = "esgi_cloud_back_end_elastic_container"
+  name = "${var.prefix}-elastic-container"
 
   assume_role_policy = <<EOF
 {
@@ -33,7 +33,7 @@ EOF
 }
 
 resource "aws_iam_role_policy" "back_end_elastic_container" {
-  name = "esgi_cloud_elastic_container"
+  name = "${var.prefix}-elastic-container"
   role = "${aws_iam_role.back_end_elastic_container.id}"
 
   policy = <<EOF
@@ -97,7 +97,7 @@ EOF
 }
 
 resource "aws_iam_role" "back_end_ec2" {
-  name = "esgi_cloud_back_end_ec2"
+  name = "${var.prefix}-ec2"
 
   assume_role_policy = <<EOF
 {
@@ -118,7 +118,7 @@ EOF
 }
 
 resource "aws_iam_role_policy" "back_end_ec2" {
-  name = "esgi_cloud_ec2"
+  name = "${var.prefix}-ec2"
   role = "${aws_iam_role.back_end_ec2.id}"
 
   policy = <<EOF
@@ -145,16 +145,6 @@ resource "aws_iam_role_policy" "back_end_ec2" {
           "logs:PutLogEvents"
       ],
       "Resource": "*"
-    },
-    {
-        "Effect": "Allow",
-        "Action": [
-            "dynamodb:Scan",
-            "dynamodb:PutItem",
-            "dynamodb:UpdateItem",
-            "dynamodb:GetItem"
-        ],
-        "Resource": "*"
     }
   ]
 }
@@ -180,12 +170,12 @@ data "template_file" "ec2_ecs_definition" {
   template = "${file("${path.module}/ecs_data.script")}"
 
   vars = {
-    cluster_name = "esgi_cloud_back_end"
+    cluster_name = var.prefix
   }
 }
 
 resource "aws_iam_instance_profile" "profile" {
-  name = "esgi_cloud_back_end_ec2"
+  name = var.prefix
   role = "${aws_iam_role.back_end_ec2.name}"
 }
 
@@ -193,8 +183,8 @@ resource "aws_iam_instance_profile" "profile" {
 resource "aws_instance" "back_end" {
   count = var.az_count
   ami = "${data.aws_ami.latest_ecs.id}"
-  availability_zone = element(data.aws_availability_zones.available.names, count.index)
-  subnet_id = element(aws_subnet.private.*.id, count.index)
+  availability_zone = element(var.availability_zone, count.index)
+  subnet_id = element(var.private_subnet.*.id, count.index)
   iam_instance_profile = "${aws_iam_instance_profile.profile.name}"
   instance_type = "t2.micro"
   ebs_optimized = "false"
@@ -214,12 +204,12 @@ resource "aws_instance" "back_end" {
   }
 
   tags = {
-    Name = "esgi_cloud_back_end_instance"
+    Name = "${var.prefix}-instance"
   }
 }
 
 data "template_file" "back_end_task_definition_ecs" {
-  template = "${file("${path.module}/task_definitions_service.json")}"
+  template =  file(var.task_definition_path)
 
   vars = {
     app_port = var.app_port 
@@ -230,7 +220,7 @@ data "template_file" "back_end_task_definition_ecs" {
 }
 
 resource "aws_ecs_task_definition" "back_end" {
-  family                = "esgi_cloud_back_end"
+  family                = var.prefix
   container_definitions = "${data.template_file.back_end_task_definition_ecs.rendered}"
   requires_compatibilities = ["EC2"]
   network_mode             = "awsvpc"
@@ -240,7 +230,7 @@ resource "aws_ecs_task_definition" "back_end" {
 }
 
 resource "aws_ecs_service" "back_end" {
-  name            = "esgi_cloud_back_end"
+  name            = var.prefix
   cluster         = "${aws_ecs_cluster.back_end.id}"
   task_definition = "${aws_ecs_task_definition.back_end.arn}"
   desired_count   = 2
@@ -248,12 +238,12 @@ resource "aws_ecs_service" "back_end" {
 
   network_configuration {
     security_groups  = [aws_security_group.back_end_ecs.id]
-    subnets          = aws_subnet.private.*.id
+    subnets          = var.private_subnet.*.id
   }
 
   load_balancer {
     target_group_arn = aws_alb_target_group.back_end.id
-    container_name   = "esgi_cloud_back_end"
+    container_name   = var.prefix
     container_port   = var.app_port
   }
 
@@ -261,13 +251,10 @@ resource "aws_ecs_service" "back_end" {
 }
 
 resource "aws_cloudwatch_log_group" "log_group" {
-  name = "/ecs/esgi-cloud-back_end"
-    tags = {
-    Environment = "production"
-  }
+  name = "/ecs/${var.prefix}"
 }
 
 resource "aws_cloudwatch_log_stream" "cb_log_stream" {
-  name           = "fargate"
+  name           = "ecs_ec2"
   log_group_name = aws_cloudwatch_log_group.log_group.name
 }
