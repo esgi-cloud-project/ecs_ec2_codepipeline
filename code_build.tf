@@ -18,7 +18,7 @@ EOF
 }
 
 resource "aws_iam_role_policy" "back_end_code_build" {
-  role = "${aws_iam_role.back_end_code_build.name}"
+  role = aws_iam_role.back_end_code_build.name
 
   policy = <<POLICY
 {
@@ -69,9 +69,9 @@ data "template_file" "back_end_build_spec_code_build" {
 }
 
 resource "aws_codebuild_project" "back_end" {
-  name           = "${var.prefix}"
+  name           = var.prefix
 
-  service_role  = "${aws_iam_role.back_end_code_build.arn}"
+  service_role  = aws_iam_role.back_end_code_build.arn
 
   artifacts {
     type = "CODEPIPELINE"
@@ -86,6 +86,6 @@ resource "aws_codebuild_project" "back_end" {
 
   source {
     type = "CODEPIPELINE"
-    buildspec = "${data.template_file.back_end_build_spec_code_build.rendered}"
+    buildspec = data.template_file.back_end_build_spec_code_build.rendered
   }
 }

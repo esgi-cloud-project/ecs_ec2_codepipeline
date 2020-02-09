@@ -34,7 +34,7 @@ EOF
 
 resource "aws_iam_role_policy" "back_end_elastic_container" {
   name = "${var.prefix}-elastic-container"
-  role = "${aws_iam_role.back_end_elastic_container.id}"
+  role = aws_iam_role.back_end_elastic_container.id
 
   policy = <<EOF
 {
@@ -89,7 +89,7 @@ resource "aws_iam_role_policy" "back_end_elastic_container" {
             "sqs:ReceiveMessage",
             "sqs:DeleteMessage"
         ],
-        "Resource": "${var.sqs_arn}"
+        "Resource": "${var.container_env.event_service_arn}"
     }
   ]
 }
@@ -119,7 +119,7 @@ EOF
 
 resource "aws_iam_role_policy" "back_end_ec2" {
   name = "${var.prefix}-ec2"
-  role = "${aws_iam_role.back_end_ec2.id}"
+  role = aws_iam_role.back_end_ec2.id
 
   policy = <<EOF
 {
@@ -176,23 +176,23 @@ data "template_file" "ec2_ecs_definition" {
 
 resource "aws_iam_instance_profile" "profile" {
   name = var.prefix
-  role = "${aws_iam_role.back_end_ec2.name}"
+  role = aws_iam_role.back_end_ec2.name
 }
 
 
 resource "aws_instance" "back_end" {
   count = var.az_count
-  ami = "${data.aws_ami.latest_ecs.id}"
+  ami = data.aws_ami.latest_ecs.id
   availability_zone = element(var.availability_zone, count.index)
   subnet_id = element(var.private_subnet.*.id, count.index)
-  iam_instance_profile = "${aws_iam_instance_profile.profile.name}"
+  iam_instance_profile = aws_iam_instance_profile.profile.name
   instance_type = "t2.micro"
   ebs_optimized = "false"
   source_dest_check = "false"
   associate_public_ip_address = false
   key_name = "test-ecs"
-  vpc_security_group_ids = ["${aws_security_group.back_end_ec2_ssh.id}"]
-  user_data = "${data.template_file.ec2_ecs_definition.rendered}"
+  vpc_security_group_ids = [aws_security_group.back_end_ec2_ssh.id]
+  user_data = data.template_file.ec2_ecs_definition.rendered
   root_block_device {
     volume_type = "gp2"
     volume_size = "30"
@@ -211,28 +211,26 @@ resource "aws_instance" "back_end" {
 data "template_file" "back_end_task_definition_ecs" {
   template =  file(var.task_definition_path)
 
-  vars = {
+  vars = merge({
     app_port = var.app_port 
     image = "${aws_ecr_repository.back_end.repository_url}:latest"
-    event_service_url = var.sqs_id
-    event_service_arn = var.sqs_arn
-  }
+  }, var.container_env)
 }
 
 resource "aws_ecs_task_definition" "back_end" {
   family                = var.prefix
-  container_definitions = "${data.template_file.back_end_task_definition_ecs.rendered}"
+  container_definitions = data.template_file.back_end_task_definition_ecs.rendered
   requires_compatibilities = ["EC2"]
   network_mode             = "awsvpc"
   memory                   = "256"
-  execution_role_arn = "${aws_iam_role.back_end_elastic_container.arn}"
-  task_role_arn = "${aws_iam_role.back_end_elastic_container.arn}"
+  execution_role_arn = aws_iam_role.back_end_elastic_container.arn
+  task_role_arn = aws_iam_role.back_end_elastic_container.arn
 }
 
 resource "aws_ecs_service" "back_end" {
   name            = var.prefix
-  cluster         = "${aws_ecs_cluster.back_end.id}"
-  task_definition = "${aws_ecs_task_definition.back_end.arn}"
+  cluster         = aws_ecs_cluster.back_end.id
+  task_definition = aws_ecs_task_definition.back_end.arn
   desired_count   = 2
   launch_type     = "EC2"
 

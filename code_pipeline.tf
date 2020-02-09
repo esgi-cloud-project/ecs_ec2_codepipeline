@@ -24,7 +24,7 @@ EOF
 
 resource "aws_iam_role_policy" "back_end_code_pipeline" {
   name = "${var.prefix}-pipeline"
-  role = "${aws_iam_role.back_end_code_pipeline.id}"
+  role = aws_iam_role.back_end_code_pipeline.id
 
   policy = <<EOF
 {
@@ -66,10 +66,10 @@ EOF
 
 resource "aws_codepipeline" "back_end" {
   name     = var.prefix
-  role_arn = "${aws_iam_role.back_end_code_pipeline.arn}"
+  role_arn = aws_iam_role.back_end_code_pipeline.arn
 
   artifact_store {
-    location = "${aws_s3_bucket.back_end_code_pipeline.bucket}"
+    location = aws_s3_bucket.back_end_code_pipeline.bucket
     type     = "S3"
   }
 
@@ -101,7 +101,7 @@ resource "aws_codepipeline" "back_end" {
       version          = "1"
 
       configuration = {
-        ProjectName = "${aws_codebuild_project.back_end.name}"
+        ProjectName = aws_codebuild_project.back_end.name
       }
     }
   }
@@ -118,8 +118,8 @@ resource "aws_codepipeline" "back_end" {
       version          = "1"
 
       configuration = {
-        ClusterName = "${aws_ecs_cluster.back_end.name}"
-        ServiceName = "${aws_ecs_service.back_end.name}"
+        ClusterName = aws_ecs_cluster.back_end.name
+        ServiceName = aws_ecs_service.back_end.name
         FileName    = "imagedefinitions.json"
       }
     }

@@ -116,7 +116,7 @@ resource "aws_alb_listener" "back_end" {
 
   default_action {
     type             = "forward"
-    target_group_arn = "${aws_alb_target_group.back_end.arn}"
+    target_group_arn = aws_alb_target_group.back_end.arn
   }
 }
 
