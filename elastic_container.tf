@@ -190,17 +190,12 @@ resource "aws_instance" "back_end" {
   ebs_optimized = "false"
   source_dest_check = "false"
   associate_public_ip_address = false
-  key_name = "test-ecs"
   vpc_security_group_ids = [aws_security_group.back_end_ec2_ssh.id]
   user_data = data.template_file.ec2_ecs_definition.rendered
   root_block_device {
     volume_type = "gp2"
     volume_size = "30"
     delete_on_termination = "true"
-  }
-
-  lifecycle {
-    ignore_changes         = ["ami", "user_data", "subnet_id", "key_name", "ebs_optimized", "private_ip"]
   }
 
   tags = {
